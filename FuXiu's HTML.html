@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FuXiu自制小网站</title>
+    <style>
+        /* 修改目录栏位置 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 62%;  /* 从60%调整为62% */
+            transform: translateY(-50%);
+            width: 180px;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            border-radius: 0 5px 5px 0;
+            z-index: 1000;
+            padding: 15px 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* 更平滑的动画曲线 */
+        }
+        .sidebar.collapsed {
+            left: -180px;  /* 向左收起 */
+        }
+        .sidebar.collapsed::after {
+            content: "";
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 30px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 0 5px 5px 0;
+            animation: bounce 5s ease 0.5s 1 normal forwards;  /* 弹跳动画改为5秒 */
+        }
+        /* 删除以下这段代码 */
+        /* .sidebar.collapsed::before {
+            content: ">";
+            position: absolute;
+            right: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 0 5px 5px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1001;
+        } */
+        @keyframes bounce {
+            0% { right: -10px; }
+            20% { right: -20px; }
+            40% { right: -5px; }
+            60% { right: -15px; }
+            80% { right: -7px; }
+            100% { right: -10px; }
+        }
+        .sidebar-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            font-weight: bold;
+            font-size: 15px;
+        }
+        .sidebar-item:hover {
+            background: #f0f0f0;
+        }
+        .sidebar-item:hover::after {
+            content: attr(data-description);
+            position: absolute;
+            left: 100%;
+            top: 0;
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            white-space: nowrap;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: '仿宋', 'Microsoft YaHei', sans-serif;
+            color: black;  /* 修改为黑色 */
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        /* 修改所有资源项的文字颜色 - 标题黑色，描述红色 */
+        .resource-item h3 {
+            color: black;  /* 所有标题保持黑色 */
+        }
+        .resource-item p {
+            color: red;  /* 所有描述改为红色 */
+            font-weight: bold;  /* 加粗 */
+            font-size: 18px;  /* 从16px增大到18px */
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: #4285f4;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+        }
+        .resource-category {
+            background: white;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .resource-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .resource-item:last-child {
+            border-bottom: none;
+        }
+        /* 旧的下载按钮样式已被新样式替换 */
+        header p {
+            font-size: 30px;
+        }
+        header h1 {
+            font-size: 50px;
+        }
+
+        /* PDF嵌入样式 */
+        .pdf-embed-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .pdf-embed-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .pdf-embed-frame {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+
+        .pdf-download-fallback {
+            padding: 15px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-top: 1px solid #dee2e6;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            width: 90px;
+            background-color: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 400;
+            font-size: 13px;
+            text-align: center;
+            transition: background-color 0.2s ease;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .download-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .download-btn:hover {
+            background-color: #357abd;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .download-btn:hover::before {
+            left: 100%;
+        }
+
+        .download-btn:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.5);
+        }
+    </style>
+    <link rel="icon" href="./头像.jpg" type="image/jpeg">
+</head>
+<body>
+    <!-- 修改后的目录栏和新增的收起按钮 -->
+    <!-- 删除以下这段代码 -->
+    <!-- 在侧边导航栏底部添加 -->
+    <div class="sidebar">
+        <div class="sidebar-item" data-description="PE制作和Windows 11 ISO工具" onclick="document.getElementById('tool-0').scrollIntoView({behavior: 'smooth'})">0 PE制作...</div>
+        <div class="sidebar-item" data-description="系统优化工具合集" onclick="document.getElementById('tool-A').scrollIntoView({behavior: 'smooth'})">A 优化工具</div>
+        <div class="sidebar-item" data-description="桌面美化资源" onclick="document.getElementById('tool-B').scrollIntoView({behavior: 'smooth'})">B 桌面美化</div>
+        <div class="sidebar-item" data-description="系统激活和更新工具" onclick="document.getElementById('tool-C').scrollIntoView({behavior: 'smooth'})">C 系统必备</div>
+        <div class="sidebar-item" data-description="浏览器资源和插件" onclick="document.getElementById('tool-D').scrollIntoView({behavior: 'smooth'})">D 浏览器</div>
+        <div class="sidebar-item" data-description="U盘加密解锁工具" onclick="document.getElementById('tool-E').scrollIntoView({behavior: 'smooth'})" style="color: red; display: flex; justify-content: space-between; align-items: center;">E U盘工具 <span style="color: blue; font-size: 13px;">(暂停下载)</span></div>
+        <div class="sidebar-item" data-description="常用软件合集" onclick="document.getElementById('tool-F').scrollIntoView({behavior: 'smooth'})">F 软件</div>
+        <div class="sidebar-item" data-description="办公软件插件" onclick="document.getElementById('tool-G').scrollIntoView({behavior: 'smooth'})">G 插件</div>
+        <div class="sidebar-item" data-description="创客比赛资源" onclick="document.getElementById('tool-H').scrollIntoView({behavior: 'smooth'})" style="color: red; display: flex; justify-content: space-between; align-items: center;">H 创客 <span style="color: blue; font-size: 13px;">(暂停下载)</span></div>
+        <div class="sidebar-item" data-description="Windows实用工具" onclick="document.getElementById('tool-I').scrollIntoView({behavior: 'smooth'})">I Windows工具</div>
+        <div class="sidebar-item" data-description="编程开发软件" onclick="document.getElementById('tool-J').scrollIntoView({behavior: 'smooth'})">J 编程软件</div>
+        <div class="sidebar-item" data-description="手机APK文件" onclick="document.getElementById('tool-K').scrollIntoView({behavior: 'smooth'})" style="color: red; display: flex; justify-content: space-between; align-items: center;">K APK文件 <span style="color: blue; font-size: 13px;">(暂停下载)</span></div>
+        <div class="sidebar-item" data-description="需要密码验证" onclick="checkPassword()">FuXiu空间</div>
+    </div>
+
+    <div class="toggle-sidebar" onclick="toggleSidebar()"></div>
+    <header>
+        <div style="position: absolute; left: 20px; top: 20px;">
+            <img src="./头像.jpg" alt="头像" style="width: 150px; height: 150px; border-radius: 50%;">
+        </div>
+        <h1>FuXiu的资源</h1>
+        <div id="current-time" style="font-size: 24px; margin-top: 15px; font-family: KaiTi, '楷体', STKaiti, '华文楷体', serif;"></div>
+    </header>
+    
+    <div class="container">
+        <div class="resource-category">
+            <h2>工具合集</h2>
+            <div class="resource-item" id="tool-0">
+                <h3>0 PE制作&创建Windows 11跳过TPM.2检测的iso文件</h3>
+                <p>如果有需要则下载！非必要</p>
+                <a href="https://www.123912.com/s/dwUvTd-657cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-A">
+                <h3>A 优化工具</h3>
+                <p>建议系统安装完毕后首先使用里面的工具</p>
+                <a href="https://www.123912.com/s/dwUvTd-q57cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-B">
+                <h3>B 桌面美化</h3>
+                <p>鼠标样式，壁纸等（壁纸还是推荐使用Steam端的Wallpaper）</p>
+                <a href="https://www.123912.com/s/dwUvTd-y57cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-C">
+                <h3>C 装完系统必备</h3>
+                <p>系统激活、转换、禁用更新之类</p>
+                <a href="https://www.123912.com/s/dwUvTd-Tq7cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-D">
+                <h3>D 浏览器</h3>
+                <p>浏览器资源，包括好用的浏览器网址和浏览器插件</p>
+                <a href="https://www.123912.com/s/dwUvTd-vq7cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-E">
+                <h3>E U盘加密&解锁</h3>
+                <p>U盘加密和一键解锁，不推荐使用。暂停止下载资源</p>
+                <a href="javascript:void(0)" class="download-btn" onclick="showPauseMessage()">暂停下载</a>
+            </div>
+            <div class="resource-item" id="tool-F">
+                <h3>F 软件</h3>
+                <p>包含常用软件及其它好用工具，如：免费听歌</p>
+                <a href="https://www.123912.com/s/dwUvTd-3q7cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-G">
+                <h3>G 插件</h3>
+                <p>多为某些软件的破解版，如PS。也包含办公软件的使用小插件</p>
+                <a href="https://www.123912.com/s/dwUvTd-hq7cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-H">
+                <h3>H 创客</h3>
+                <p>如有参加创客比赛的都可以下载，是其驱动文件和软件主体。暂停止下载资源</p>
+                <a href="javascript:void(0)" class="download-btn" onclick="showPauseMessage()">暂停下载</a>
+            </div>
+            <div class="resource-item" id="tool-I">
+                <h3>I Windows其它工具</h3>
+                <p>虚拟机创建、启动U盘制作等等</p>
+                <a href="https://www.123912.com/s/dwUvTd-Aq7cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-J">
+                <h3>J 编程软件</h3>
+                <p>现有C语言、Python、Trae等编程用软件，有兴趣的可以下载试试看</p>
+                <a href="https://www.123912.com/s/dwUvTd-9q7cv" class="download-btn" target="_blank">跳转至123云盘</a>
+            </div>
+            <div class="resource-item" id="tool-K">
+                <h3>K APK文件</h3>
+                <p>手机的可以直接下载.apk文件，而电脑需要安装一个搭建apk运行环境，也就是里面的那两个模拟器，任选一个即可。暂停止下载资源</p>
+                <p>（另外FuXiu可能有点懒去更新里面那些APK的版本，有更新的话你们就更新吧！）</p>
+                <a href="javascript:void(0)" class="download-btn" onclick="showPauseMessage()">暂停下载</a>
+            </div>
+        </div>
+        
+
+            
+            <!-- PDF文件嵌入部分 -->
+            <div id="pdf-embed-section" style="margin-top: 40px; text-align: center;">
+                <h2 style="margin-bottom: 20px;">LX Music的下载安装与配置</h2>
+                <div class="pdf-embed-container" style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: white;">
+                    <object data="LX Music的下载安装与配置 - FuXiu.pdf" 
+                            type="application/pdf"
+                            style="width: 100%; height: 600px; border: none;"
+                            title="LX Music的下载安装与配置">
+                        <p>您的浏览器不支持PDF预览。<a href="LX Music的下载安装与配置 - FuXiu.pdf" target="_blank">点击查看PDF文件</a></p>
+                    </object>
+                    <div class="pdf-download-fallback" style="margin-top: 15px;">
+                        <a href="LX Music的下载安装与配置 - FuXiu.pdf" download class="download-btn" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; text-decoration: none; border-radius: 5px;">
+                            下载PDF文件
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取实时时间并精确到秒
+        let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let timeZoneName = userTimezone;
+        
+        function updateTime(timeZone = userTimezone) {
+            const now = new Date();
+            const formattedTime = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZone: timeZone
+            });
+            // 显示时间和时区信息
+            document.getElementById('current-time').textContent = `${formattedTime} 正在为您使用${timeZoneName}时区`;
+        }
+        
+        // 获取用户时区
+        function getUserTimezone() {
+            // 检查localStorage中是否有保存的地理位置授权信息和时区
+            const savedLocationInfo = localStorage.getItem('locationPermissionInfo');
+            const now = new Date().getTime();
+            const expireTime = 24 * 60 * 60 * 1000; // 24小时过期
+            
+            if (savedLocationInfo) {
+                const parsedInfo = JSON.parse(savedLocationInfo);
+                // 检查是否在有效期内
+                if (now - parsedInfo.timestamp < expireTime) {
+                    if (parsedInfo.granted) {
+                        // 如果用户之前授权了地理位置，直接使用保存的时区
+                        userTimezone = parsedInfo.timezone;
+                        timeZoneName = parsedInfo.timezoneName;
+                        updateTime(userTimezone);
+                        return; // 跳过后续的地理位置请求
+                    } else {
+                        // 如果用户之前拒绝了授权，直接使用北京时区
+                        userTimezone = 'Asia/Shanghai';
+                        timeZoneName = '北京';
+                        updateTime(userTimezone);
+                        return; // 跳过后续的地理位置请求
+                    }
+                }
+            }
+            
+            // 如果没有保存的信息或已过期，尝试获取用户的地理位置来确定准确时区
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        
+                        // 使用第三方API获取时区信息
+                        fetch(`https://ipapi.co/${latitude},${longitude}/json/`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.timezone) {
+                                    userTimezone = data.timezone;
+                                    timeZoneName = data.timezone;
+                                    updateTime(userTimezone);
+                                    
+                                    // 保存授权信息到localStorage
+                                    localStorage.setItem('locationPermissionInfo', JSON.stringify({
+                                        granted: true,
+                                        timezone: userTimezone,
+                                        timezoneName: timeZoneName,
+                                        timestamp: new Date().getTime()
+                                    }));
+                                }
+                            })
+                            .catch(error => {
+                                console.error('获取时区信息失败:', error);
+                                // 如果API请求失败，切换到北京时区
+                                userTimezone = 'Asia/Shanghai';
+                                timeZoneName = '北京';
+                                updateTime(userTimezone);
+                                
+                                // 保存失败信息到localStorage
+                                localStorage.setItem('locationPermissionInfo', JSON.stringify({
+                                    granted: true, // 用户授权了地理位置，但API请求失败
+                                    timezone: userTimezone,
+                                    timezoneName: timeZoneName,
+                                    timestamp: new Date().getTime()
+                                }));
+                            });
+                    },
+                    (error) => {
+                        console.error('获取地理位置失败:', error);
+                        // 如果获取地理位置失败，切换到北京时区
+                        userTimezone = 'Asia/Shanghai';
+                        timeZoneName = '北京';
+                        updateTime(userTimezone);
+                        
+                        // 保存拒绝授权信息到localStorage
+                        localStorage.setItem('locationPermissionInfo', JSON.stringify({
+                            granted: false,
+                            timezone: userTimezone,
+                            timezoneName: timeZoneName,
+                            timestamp: new Date().getTime()
+                        }));
+                    }
+                );
+            } else {
+                console.error('浏览器不支持Geolocation API');
+                // 如果浏览器不支持地理定位，使用北京时区
+                userTimezone = 'Asia/Shanghai';
+                timeZoneName = '北京';
+                updateTime(userTimezone);
+                
+                // 保存不支持信息到localStorage
+                localStorage.setItem('locationPermissionInfo', JSON.stringify({
+                    granted: false,
+                    timezone: userTimezone,
+                    timezoneName: timeZoneName,
+                    timestamp: new Date().getTime()
+                }));
+            }
+        }
+        
+        // 页面加载时初始化
+        updateTime();
+        setInterval(updateTime, 1000);
+        getUserTimezone();
+    </script>
+</body>
+</html>
+
+<style>
+    /* 修改收起/展开按钮为方形样式 */
+    .toggle-sidebar {
+        position: fixed;
+        left: 0px;
+        top: 27%;
+        transform: translateY(-50%);
+        width: 30px;
+        height: 30px;
+        background: rgba(255,255,255,0.9);
+        border-radius: 0 5px 5px 0;
+        z-index: 1001;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        font-weight: bold;
+        font-size: 16px;
+    }
+    .toggle-sidebar::after {
+        content: "<";  /* 初始状态显示"<" */
+        transition: all 0.3s ease;
+    }
+    .sidebar.collapsed + .toggle-sidebar::after {
+        content: ">";  /* 收起状态显示">" */
+    }
+    .toggle-sidebar::before {
+        content: "收起导航栏";
+        position: absolute;
+        left: 40px;
+        white-space: nowrap;
+        font-size: 16px;
+        color: #000000;
+        font-weight: bold;
+        opacity: 1;
+        transform: translateY(0);
+        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* 从0.5s改为0.3s */
+    }
+    .sidebar.collapsed + .toggle-sidebar::before {
+        content: "展开导航栏";
+        transform: translateY(20px);
+    }
+    .toggle-sidebar:hover::before {
+        opacity: 0.8;
+    }
+    .sidebar:not(.collapsed) + .toggle-sidebar::before {
+        animation: slideUp 0.3s ease forwards;
+    }
+    .sidebar.collapsed + .toggle-sidebar::before {
+        animation: slideDown 0.3s ease forwards;
+    }
+    @keyframes slideUp {
+        0% { transform: translateY(20px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes slideDown {
+        0% { transform: translateY(-20px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+</style>
+
+<script>
+    function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        sidebar.classList.toggle('collapsed');
+        void sidebar.offsetWidth; // 强制重绘
+    }
+
+    function checkPassword() {
+        const correctPassword = "fuxiu1313113";
+        const userPassword = prompt("请输入访问密码：");
+        
+        if (userPassword === correctPassword) {
+            window.open("https://fuxiu163.github.io/FuXiuZiYuanHub/%E7%A7%81%E5%AF%86%E9%A1%B5%E9%9D%A2.html", "_blank");
+        } else if (userPassword !== null) {
+            alert("密码错误！请重新输入。");
+        }
+    }
+
+    function showPauseMessage() {
+        // 创建自定义弹窗
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 10000;
+            text-align: center;
+            font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
+            font-size: 24px;
+            color: red;
+            min-width: 400px;
+            max-width: 600px;
+            opacity: 0;
+            transition: all 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        `;
+        
+        modal.innerHTML = `
+            <div style="margin-bottom: 20px;">都说暂停下载了</div>
+            <div>你盐精虾嘛？</div>
+            <img src="./行.png" alt="行" style="width: 150px; height: auto; margin: 20px 0; border-radius: 5px;">
+            <div id="countdown" style="position: absolute; bottom: 10px; right: 15px; color: blue; font-size: 16px; font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;">5s</div>
+        `;
+        
+        // 添加背景遮罩
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0);
+            z-index: 9999;
+            transition: background 1.5s ease;
+        `;
+        
+        document.body.appendChild(overlay);
+        document.body.appendChild(modal);
+        
+        // 触发动画
+        setTimeout(() => {
+            modal.style.transform = 'translate(-50%, -50%) scale(1)';
+            modal.style.opacity = '1';
+            overlay.style.background = 'rgba(0,0,0,0.5)';
+        }, 10);
+        
+        // 倒计时和自动关闭
+        let countdown = 5;
+        const countdownElement = modal.querySelector('#countdown');
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                countdownElement.textContent = countdown + 's';
+            } else {
+                countdownElement.textContent = '0s';
+                clearInterval(countdownInterval);
+                setTimeout(() => {
+                    overlay.remove();
+                    modal.remove();
+                }, 100);
+            }
+        }, 1000);
+    }
+</script>
+
+<style>
+/* 添加样式确保新链接在底部 */
+.sidebar {
+display: flex;
+flex-direction: column;
+}
+.nav-item {
+margin-top: auto; /* 将最后一个项目推到最底部 */
+}
+
+/* 点击弹出图片效果 */
+.click-pop-image {
+    position: fixed;
+    max-width: 60px;
+    max-height: 60px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 99999;
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+    animation: clickPopAnim 1s ease-out forwards;
+}
+@keyframes clickPopAnim {
+    0% {
+        transform: translate(-50%, -50%) scale(0.2);
+        opacity: 0;
+    }
+    30% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+    }
+    60% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -80%) scale(0.9);
+        opacity: 0;
+    }
+}
+
+/* 彩蛋弹窗（连点9次触发） */
+.egg-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    animation: eggFadeIn 0.4s ease forwards;
+}
+@keyframes eggFadeIn {
+    to { opacity: 1; }
+}
+.egg-modal {
+    position: relative;
+    background: url('./燃晚.png') center/cover no-repeat, linear-gradient(135deg, #fff5f7 0%, #ffe4ec 100%);
+    border-radius: 22px;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.4);
+    padding: 90px 120px 60px 120px;
+    min-width: 760px;
+    min-height: 460px;
+    transform: scale(0.5);
+    animation: eggPopIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+@keyframes eggPopIn {
+    to { transform: scale(1); }
+}
+.egg-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #ff4d4f;
+    color: white;
+    border: none;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(255, 77, 79, 0.4);
+    transition: all 0.2s ease;
+}
+.egg-modal-close:hover {
+    background: #e63946;
+    transform: scale(1.1) rotate(90deg);
+}
+.egg-modal-title-main {
+    display: block;
+    font-size: 64px;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: center;
+    line-height: 1.2;
+    letter-spacing: 6px;
+    margin: 0 0 18px 0;
+    font-family: 'KaiTi', '楷体', STKaiti, '华文楷体', serif;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 3px rgba(0, 0, 0, 0.4);
+}
+.egg-modal-title-sub {
+    display: block;
+    font-size: 28px;
+    color: #ffffff;
+    text-align: right;
+    line-height: 1.4;
+    letter-spacing: 2px;
+    margin: 28px 0 0 0;
+    font-family: 'KaiTi', '楷体', STKaiti, '华文楷体', serif;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.4);
+}
+.egg-modal-countdown {
+    position: absolute;
+    bottom: 14px;
+    right: 130px;
+    font-size: 15px;
+    color: #ff3344;
+    font-weight: bold;
+    text-shadow: 0 1px 6px rgba(255, 255, 255, 0.8), 0 0 2px rgba(255, 255, 255, 1);
+}
+.egg-modal-keep-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 18px;
+    padding: 6px 14px;
+    background: rgba(199, 44, 72, 0.85);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s ease;
+    font-family: 'KaiTi', '楷体', STKaiti, '华文楷体', serif;
+}
+.egg-modal-keep-btn:hover {
+    background: rgba(199, 44, 72, 1);
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.egg-modal-keep-btn.activated {
+    background: rgba(80, 140, 80, 0.9);
+    border-color: rgba(255, 255, 255, 0.8);
+}
+.egg-modal-keep-btn.activated:hover {
+    transform: translateY(-1px) scale(1.03);
+    background: rgba(60, 120, 60, 1);
+}
+</style>
+
+<script>
+// 全局点击事件：弹出1.png图片 + 延迟1秒后跳转/执行原操作 + 连点9次彩蛋
+(function () {
+    // ========== 连点9次彩蛋检测 ==========
+    const POS_TOLERANCE = 40;   // 判定为"同一位置"的像素容差
+    const TIME_WINDOW = 20000;  // 20秒时间窗口
+    const CLICK_TARGET = 9;     // 需要点击次数
+    let clickRecords = [];      // 记录每次点击 {x, y, time}
+
+    function showEggModal() {
+        // 避免重复弹出
+        if (document.querySelector('.egg-modal-overlay')) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'egg-modal-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'egg-modal';
+
+        let timer = null;
+        let keepWatching = false;
+        const MAX_REMAIN = 15;   // 默认倒计时秒数
+        let remain = MAX_REMAIN;
+
+        // 右上角红叉
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'egg-modal-close';
+        closeBtn.innerHTML = '×';
+        function closeModal() {
+            if (timer) clearInterval(timer);
+            overlay.remove();
+        }
+        closeBtn.addEventListener('click', closeModal);
+
+        // 标题（燃晚99居中，破折号部分靠右）
+        const titleWrap = document.createElement('div');
+        const titleMain = document.createElement('span');
+        titleMain.className = 'egg-modal-title-main';
+        titleMain.textContent = '燃晚99';
+        const titleSub = document.createElement('span');
+        titleSub.className = 'egg-modal-title-sub';
+        titleSub.textContent = '——《二哈和他的白猫师尊》';
+        titleWrap.appendChild(titleMain);
+        titleWrap.appendChild(titleSub);
+
+        // 倒计时
+        const countdown = document.createElement('div');
+        countdown.className = 'egg-modal-countdown';
+        countdown.textContent = remain + 's';
+        timer = setInterval(() => {
+            if (keepWatching) return; // 开启一直看后冻结倒计时
+            remain--;
+            if (remain > 0) {
+                countdown.textContent = remain + 's';
+            } else {
+                countdown.textContent = '0s';
+                clearInterval(timer);
+                closeModal();
+            }
+        }, 1000);
+
+        // "我要一直看"按钮（可来回切换）
+        const keepBtn = document.createElement('button');
+        keepBtn.className = 'egg-modal-keep-btn';
+        keepBtn.textContent = '我要一直看';
+        keepBtn.addEventListener('click', function () {
+            keepWatching = !keepWatching;
+            if (keepWatching) {
+                // 切换为一直看
+                countdown.textContent = '无限';
+                keepBtn.textContent = '恢复倒计时';
+                keepBtn.classList.add('activated');
+            } else {
+                // 切回倒计时模式：重置为15秒重新开始
+                remain = MAX_REMAIN;
+                countdown.textContent = remain + 's';
+                keepBtn.textContent = '我要一直看';
+                keepBtn.classList.remove('activated');
+            }
+        });
+
+        modal.appendChild(closeBtn);
+        modal.appendChild(titleWrap);
+        modal.appendChild(countdown);
+        modal.appendChild(keepBtn);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        // 弹窗打开期间：点击遮罩/任何外部位置都无效，仅红叉可关闭（倒计时走完自动关除外）
+    }
+
+    function handleEggCheck(x, y) {
+        const now = Date.now();
+        // 先清理超过20秒的旧记录
+        clickRecords = clickRecords.filter(r => now - r.time <= TIME_WINDOW);
+        // 加入新点击
+        clickRecords.push({ x, y, time: now });
+        // 在现有记录中查找和当前点击位置接近（40px内）且在20秒窗口内的次数
+        const sameSpotClicks = clickRecords.filter(r =>
+            Math.abs(r.x - x) <= POS_TOLERANCE &&
+            Math.abs(r.y - y) <= POS_TOLERANCE
+        );
+        if (sameSpotClicks.length >= CLICK_TARGET) {
+            showEggModal();
+            // 触发后清空，避免连续弹
+            clickRecords = [];
+        }
+    }
+    // ========== 连点9次彩蛋检测 END ==========
+
+    // 捕获阶段拦截所有点击
+    document.addEventListener('click', function (e) {
+        // 如果彩蛋弹窗已经打开：点击任何地方都不额外处理（不点小图、不拦截、不检测）
+        if (document.querySelector('.egg-modal-overlay')) return;
+
+        // 如果已经是重放的点击（带标记），不拦截
+        if (e._clickPopReplayed) return;
+
+        // 彩蛋检测（使用捕获阶段最先执行）
+        handleEggCheck(e.clientX, e.clientY);
+
+        // 查找是否是会跳转/执行操作的元素
+        let target = e.target;
+        let actionEl = null;
+        let actionType = null;
+        let actionData = null;
+
+        // 向上查找 a 标签（带链接的）
+        while (target && target !== document) {
+            if (target.tagName === 'A' && target.href && !target.href.startsWith('javascript:')) {
+                actionEl = target;
+                actionType = 'link';
+                actionData = { href: target.href, target: target.target || '_self' };
+                break;
+            }
+            // 查找带 onclick 的元素（会跳转/滚动/打开新窗口的）
+            if (target.onclick) {
+                const onclickStr = target.getAttribute('onclick') || '';
+                const hasNav = /scrollIntoView|window\.open|location|checkPassword|toggleSidebar|showPauseMessage/.test(onclickStr);
+                if (hasNav) {
+                    actionEl = target;
+                    actionType = 'onclick';
+                    actionData = { onclickStr: onclickStr };
+                    break;
+                }
+            }
+            target = target.parentElement;
+        }
+
+        // 总是在点击位置弹出图片
+        const img = document.createElement('img');
+        img.src = './1.png';
+        img.className = 'click-pop-image';
+        img.style.left = e.clientX + 'px';
+        img.style.top = e.clientY + 'px';
+        img.onerror = function () {
+            // 如果1.png加载失败，至少保持占位（仍走1秒延迟逻辑）
+            img.style.background = 'rgba(74,144,226,0.5)';
+            img.style.borderRadius = '50%';
+        };
+        document.body.appendChild(img);
+        // 1秒动画结束后移除元素
+        setTimeout(() => img.remove(), 1050);
+
+        // 如果是带操作的点击，先阻止原行为，1秒后再重放
+        if (actionEl && actionType) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            setTimeout(() => {
+                if (actionType === 'link') {
+                    // 打开链接
+                    if (actionData.target === '_blank' || actionData.target === '_new') {
+                        window.open(actionData.href, '_blank');
+                    } else {
+                        window.location.href = actionData.href;
+                    }
+                } else if (actionType === 'onclick') {
+                    // 构造一个带标记的点击，避免再次被拦截
+                    const evt = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: e.clientX,
+                        clientY: e.clientY
+                    });
+                    evt._clickPopReplayed = true;
+                    actionEl.dispatchEvent(evt);
+                }
+            }, 1000);
+        }
+    }, true); // 使用捕获阶段，确保先于其他 onclick 执行
+})();
+</script>
